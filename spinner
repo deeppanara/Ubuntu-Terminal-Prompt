@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function spinner() {
+  tput civis
+
+  # Clear Line
+  CL="\e[2K"
+  # Spinner Character
+  # SPINNER="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+  # SPINNER="◰◳◲◱"
+  SPINNER="⠙⠸⠴⠦⠇⠋"
+  
+  task="$@"
+  while :; do
+    jobs %1 > /dev/null 2>&1
+    [ $? = 0 ] || {
+      printf "${CL}✓ ${task}\n"
+      break
+    }
+    for (( i=0; i<${#SPINNER}; i++ )); do
+      sleep 0.04
+      printf "${CL}${SPINNER:$i:1} ${task}\r"
+    done
+  done
+
+  #msg="${task-InProgress}"
+  task="${3-$1}"
+  
+  tput cnorm
+}
+
+$@ > /dev/null 2>&1 & spinner "$@" 
