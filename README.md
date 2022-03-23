@@ -5,9 +5,8 @@
 ```
 git clone https://github.com/deeppanara/prompt_command.git .bash
 ```
+### run install.sh
 
-> add this line in .bashrc file
 ```
-source ~/.bash/prompt_command
-export PROMPT_COMMAND="prompt_command"
+sh ~/.bash/install.sh
 ```
