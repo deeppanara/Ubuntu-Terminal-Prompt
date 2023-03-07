@@ -18,7 +18,11 @@ function spinner() {
       break
     }
     for (( i=0; i<${#SPINNER}; i++ )); do
-      sleep 0.04
+      jobs %1 > /dev/null 2>&1
+      [ $? = 0 ] || {
+        break
+      }
+      sleep 0.05
       printf "${CL}${SPINNER:$i:1} ${task}\r"
     done
   done
