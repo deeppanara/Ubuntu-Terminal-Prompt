@@ -125,6 +125,11 @@ function run()
     "$@"
     echo
 }
+function run0()
+{
+    echo "${green}Running: >>> ${red} $@ ${green} <<< ${reset}"
+    "$@"
+} 
 function nullrun()
 {
     bash ~/.bash/spinner "$@"
@@ -154,6 +159,29 @@ service_down () {
 	nullrun sudo service php7.2-fpm stop 
 	nullrun sudo service elasticsearch stop 
 	nullrun sudo service kibana stop 
+}
+
+oro_reset () {
+    run  mysqladmin -proot -uroot DROP b2b_crm_dev;
+    run  mysqladmin -proot -uroot CREATE b2b_crm_dev;
+    run0 run rm -rf var/cache 
+    run  php -d memory_limit=8G bin/console oro:install --timeout=2000 --language=en --formatting-code=en_US --organization-name='ORO' --user-name=admin --user-email=admin@example.com --user-firstname=Admin --user-lastname=Dom --user-password='admin' --sample-data=y --application-url='http://oro.local.new.com/' 
+    run0 rm -rf var/cache 
+    run  php bin/console c:c -vv 
+}
+
+oro_load () {
+    run0 rm -rf var/cache 
+    run bin/console oro:migration:load --force
+    run bin/console oro:migration:data:load  --fixtures-type=demo
+    run php bin/console c:c -vv 
+}
+
+oro_update () {
+    run bin/console oro:migration:load --force
+    run bin/console oro:migration:data:load  --fixtures-type=demo
+    run php bin/console c:c -vv 
+    php bin/console oro:assets:install --symlink
 }
 
 function ext {
@@ -365,7 +393,7 @@ function prompt_command {
     
     tput cnorm
     PS1="${line_1}\n${line_2}"
-	# echo -ne "\033]0;${PWD}\007"
+	echo -ne "\033]0;$(pwd | perl -pe "s|^$HOME|~|")\007"
 }	
 
 trap 'timer_start' DEBUG
