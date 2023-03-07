@@ -6,9 +6,9 @@ function spinner() {
   # Clear Line
   CL="\e[2K"
   # Spinner Character
-  # SPINNER="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+  SPINNER="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
   # SPINNER="◰◳◲◱"
-  SPINNER="⠙⠸⠴⠦⠇⠋"
+  # SPINNER="⠙⠸⠴⠦⠇⠋"
   
   task="$@"
   while :; do
