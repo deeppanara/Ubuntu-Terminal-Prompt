@@ -25,7 +25,7 @@ sh ~/.bash/install.sh
 ```
 
 # Done
- - Ppen new Terminal and 🥳🥳🥳🥳🥳
+ - Open new Terminal and 🥳🥳🥳🥳🥳
 <pre><font color="#FFE300"><b>┬─ </b></font><font color="#9ADA5D"><b>lenovo@lenovo-ThinkPad-L470</b></font><font color="#1184B3"><b> ~</b></font> <font color="#FFFFFF">─────────────────────── </font><font color="#FFD000">05:37:05 PM</font> | <font color="#9ADA5D">176ms</font> | <font color="#9ADA5D"><b>✔</b></font>
 <font color="#FFE300"><b>╰➤ </b></font>
 
