@@ -140,7 +140,26 @@ function nullrun()
     # "$@" &> /dev/null;[ $? -eq 0 ] && echo -en ${yellow}'\r\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94'${reset} || echo -e ${red}'\n failed \n' ${reset}
     # echo
 }
-
+function loop() {
+    local interval=${1:-1}  # Set default value to 1 if first argument is not a number
+    if ! [[ $interval =~ ^[0-9]+$ ]]; then
+        echo "Invalid interval. Setting default interval to 1 second."
+        interval=1
+    else
+        shift
+    fi
+    echo
+    echo "${green}Running, every ${interval} seconds: >>> ${red} $@ ${green} <<< ${reset}"
+    echo
+    while true; do
+        "$@"  # Execute the command passed as arguments
+        sleep "$interval"
+    done
+}
+export -f run
+export -f run0
+export -f nullrun
+export -f loop
 # Find a file with a pattern in name:
 function ff()
 {
