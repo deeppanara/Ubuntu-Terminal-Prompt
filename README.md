@@ -16,7 +16,7 @@ When you open your Terminal through the Dash or the Ctrl+Alt +T shortcut, you se
 ### clone this repo in ".bash" dir
 
 ```
-git clone https://github.com/deeppanara/prompt_command.git ~/.bash
+git clone https://github.com/deeppanara/Ubuntu-Terminal-Prompt.git ~/.bash
 ```
 ### run install.sh
 
