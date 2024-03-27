@@ -23,6 +23,10 @@ git clone https://github.com/deeppanara/prompt_command.git ~/.bash
 ```
 sh ~/.bash/install.sh
 ```
+### restart bash
+```
+source .bashrc 
+```
 
 # Done
  - Open new Terminal and 🥳🥳🥳🥳🥳
