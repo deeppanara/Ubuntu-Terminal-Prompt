@@ -112,58 +112,104 @@ if [ -x /usr/bin/dircolors ]; then
     alias egrep='egrep --color=auto'
 fi
 
-red=`tput setaf 1`
-green=`tput setaf 2`
-yellow=`tput setaf 3`
-reset=`tput sgr0`
+red=$(tput setaf 1)
+green=$(tput setaf 2)
+yellow=$(tput setaf 3)
+bold=$(tput bold)
+reset=$(tput sgr0)
+
+line1()
+{
+    echo $(seq -s= 1 $(tput cols) | tr -d '[:digit:]')
+}
+line2()
+{
+    echo $(seq -s━ 1 $(tput cols) | tr -d '[:digit:]')
+}
+line3() {
+    echo ${green}$(seq -s '━╸' 1 $(( $(tput cols) / 2 )) | tr -d '[:digit:]')${reset}
+}
+
+title() {
+    echo -e "\n${bold}${yellow}$1${reset}"  # Bold title with dots
+    echo -e "${bold}${yellow}$(printf '=%.0s' $(seq $((${#1}))))${reset}\n"  # Dynamic underline
+}
+
+export -f line1
+export -f line2
+export -f line3
+export -f title
 
 function run()
 {
-    echo
-    echo "${green}Running: >>> ${red} $@ ${green} <<< ${reset}"
+    echo "${green}Running: >>> ${red}$@${green} <<< ${reset}"
     echo
     "$@"
     echo
 }
 function run0()
 {
-    echo "${green}Running: >>> ${red} $@ ${green} <<< ${reset}"
+    echo "${green}Running: >>> ${red}$@${green} <<< ${reset}"
     "$@"
-} 
+}
+
 function nullrun()
 {
     bash ~/.bash/spinner "$@"
-    
-    # $@ & spinner "$@" 
+
+    # $@ & spinner "$@"
     # echo
     # echo -en "${green}Running: >>> ${red} $@ ${green} <<< ${reset}"
     # "$@" &> /dev/null;[ $? -eq 0 ] && echo -en ${yellow}'\r\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94\xE2\x9C\x94'${reset} || echo -e ${red}'\n failed \n' ${reset}
     # echo
 }
 function loop() {
-    local interval=${1:-1}  # Set default value to 1 if first argument is not a number
+    local interval=${1:-1}  
     if ! [[ $interval =~ ^[0-9]+$ ]]; then
         echo "Invalid interval. Setting default interval to 1 second."
-        interval=1
+        interval=0
     else
         shift
     fi
+
     echo
-    echo "${green}Running, every ${interval} seconds: >>> ${red} $@ ${green} <<< ${reset}"
+    echo "Running every ${interval} seconds: >>> $@ <<<"
     echo
+
     while true; do
-        "$@"  # Execute the command passed as arguments
+        bash ~/.bash/spinner "$@"
         sleep "$interval"
     done
 }
+
 export -f run
 export -f run0
 export -f nullrun
 export -f loop
+
+
 # Find a file with a pattern in name:
-function ff()
+ff ()
 {
-    find . -type f -iname '*'"$*"'*' -ls ; 
+    find . -type f -iname '*'"$*"'*' -ls ;
+}
+
+mysql_import() {
+    if [ $# -ne 2 ]; then
+        echo "Usage: mysql_import <database_name> <file>"
+        return 1
+    fi
+
+    username="helios"
+    password="helios"
+    database=$1
+    file=$2
+
+    # Check if the database exists, if not create it
+    run mysql -u $username -p$password -e "CREATE DATABASE IF NOT EXISTS $database CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+
+    # Import the database
+    run mysql -u $username -p$password $database < $file
 }
 
 service_down () {
@@ -172,34 +218,90 @@ service_down () {
 	echo "Running: >>> service stop"
 	echo
 	sudo echo 1 > /dev/null
-	nullrun sudo service nginx stop 
-	nullrun sudo service mysqld stop 
-	nullrun sudo service redis stop 
-	nullrun sudo service php7.2-fpm stop 
-	nullrun sudo service elasticsearch stop 
-	nullrun sudo service kibana stop 
+	nullrun sudo service nginx stop
+	nullrun sudo service mysqld stop
+	nullrun sudo service redis stop
+	nullrun sudo service php7.2-fpm stop
+	nullrun sudo service elasticsearch stop
+	nullrun sudo service kibana stop
+}
+
+dumpsql() {
+
+    bash ~/.bash/spinner "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
+    bash ~/.bash/spinner "bash ~/OneDrive/Importent\ Data/scripts/run_sql_by_line.sh"
+
+}
+# dump() {
+# 	sudo echo 1 > /dev/null
+# 	run0 sudo rm -rf app/cache/*
+#     run0 sudo rm -rf web/js/compiled/
+# 	run0 sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
+# 	run php app/console assets:install
+# 	run php app/console assetic:dump
+# 	run php app/console cache:clear
+# 	run0 sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
+# }
+
+dump() {
+
+    sudo echo 1 > /dev/null
+
+    title "Updating sql..."
+    bash ~/.bash/spinner "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
+    bash ~/.bash/spinner "bash ~/OneDrive/Importent\ Data/scripts/run_sql_by_line.sh"
+
+    title "Updating cache..."
+    bash ~/.bash/spinner sudo rm -rf app/cache/*
+    bash ~/.bash/spinner sudo rm -rf web/js/compiled/
+    bash ~/.bash/spinner sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
+    bash ~/.bash/spinner php app/console assets:install
+    bash ~/.bash/spinner php app/console assetic:dump
+
+    title "Updating cache..."
+    bash ~/.bash/spinner php app/console cache:clear
+    bash ~/.bash/spinner sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
+}
+
+
+queue_count() {
+	while true; do
+	    for queue in \
+		"local-duell-main" \
+		"local-duell-import" \
+		"local-duell-manual" \
+		"duell-daily-cron.fifo"
+	    do
+		count=$(awslocal sqs get-queue-attributes --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/$queue --attribute-names ApproximateNumberOfMessages --query 'Attributes.ApproximateNumberOfMessages')
+	
+		output="Queue: $queue, Message Count: $count"
+		echo -e "$output"
+	    done
+	    
+	    
+	done
 }
 
 oro_reset () {
     run  mysqladmin -proot -uroot DROP b2b_crm_dev;
     run  mysqladmin -proot -uroot CREATE b2b_crm_dev;
-    run0 run rm -rf var/cache 
-    run  php -d memory_limit=8G bin/console oro:install --timeout=2000 --language=en --formatting-code=en_US --organization-name='ORO' --user-name=admin --user-email=admin@example.com --user-firstname=Admin --user-lastname=Dom --user-password='admin' --sample-data=y --application-url='http://oro.local.new.com/' 
-    run0 rm -rf var/cache 
-    run  php bin/console c:c -vv 
+    run0 run rm -rf var/cache
+    run  php -d memory_limit=8G bin/console oro:install --timeout=2000 --language=en --formatting-code=en_US --organization-name='ORO' --user-name=admin --user-email=admin@example.com --user-firstname=Admin --user-lastname=Dom --user-password='admin' --sample-data=y --application-url='http://oro.local.new.com/'
+    run0 rm -rf var/cache
+    run  php bin/console c:c -vv
 }
 
 oro_load () {
-    run0 rm -rf var/cache 
+    run0 rm -rf var/cache
     run bin/console oro:migration:load --force
     run bin/console oro:migration:data:load  --fixtures-type=demo
-    run php bin/console c:c -vv 
+    run php bin/console c:c -vv
 }
 
 oro_update () {
     run bin/console oro:migration:load --force
     run bin/console oro:migration:data:load  --fixtures-type=demo
-    run php bin/console c:c -vv 
+    run php bin/console c:c -vv
     php bin/console oro:assets:install --symlink
 }
 
@@ -214,7 +316,7 @@ function ext {
     do
       if [ -f "$n" ] ; then
           case "${n%,}" in
-            *.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar) 
+            *.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar)
                          run tar xvf "$n"       ;;
             *.lzma)      run unlzma ./"$n"      ;;
             *.bz2)       run bunzip2 ./"$n"     ;;
@@ -303,9 +405,9 @@ function prompt_command {
 
     timer_stop
     if [[ ${timer_show} != "" ]]; then
-        local timer_text=" | ${Green}${timer_now}${timer_show}${Color_Off}"            
+        local timer_text=" | ${Green}${timer_now}${timer_show}${Color_Off}"
     fi
-    
+
     # Must run this early because when we use $() this adds to our jobs count
     local total_jobs=$(jobs | wc -l | perl -pe 's/\s+//g')
     local stopped_jobs=$(jobs -s | wc -l | perl -pe 's/\s+//g')
@@ -345,7 +447,7 @@ function prompt_command {
                 git_text="${Red} $(__git_ps1 "${Green}{${Color_Off}${Red}branch %s${Color_Off}${Green}}${Color_Off}") ${Color_Off}"
             fi
             # DIFF=$(git status --porcelain | wc -l)
-            # TAGS= 
+            # TAGS=
             # if [ "x$DIFF" != "x0" ]; then
             #     TAGS="$TAGS${Cyan}Total:${Color_Off}${LightGray}$DIFF${Color_Off}"
             #     TAGS="$TAGS ${Cyan}Modified:${Color_Off}${LightGray}$(git status --porcelain | grep ' M' | wc -l)${Color_Off}"
@@ -358,9 +460,9 @@ function prompt_command {
                 /diverged/,/respectively/{if ($0 ~ /respectively/) print $5 "↕" $3 " "}')
 
             if [ "X${git_ahead}" != "X" ]; then
-                git_ahead="${Yellow}[ ${Color_Off}${LightGray}${git_ahead}${Color_Off}${Yellow} ]${Color_Off}" 
+                git_ahead="${Yellow}[ ${Color_Off}${LightGray}${git_ahead}${Color_Off}${Yellow} ]${Color_Off}"
             fi
-           
+
         fi
     else
         # prompt component when not in git
@@ -393,7 +495,7 @@ function prompt_command {
     local remove_color_codes_regex="s/\\\\\[\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]\\\\\]//g"
     local length_elements=$(echo -e "┬─ ${host_text}${pwd_text}${virtual_env_text}${git_text}${git_ahead}${tmux_text}${jobs_text}${date_text}${timer_text}${exit_status_text}" | perl -pe $remove_color_codes_regex)
     local rule_length=$(($COLUMNS - ${#length_elements}))
-  
+
     local rule
     if [[ ${rule_length} -gt 0 ]]; then
         # Everything fits on the info line
@@ -412,7 +514,26 @@ function prompt_command {
     
     tput cnorm
     PS1="${line_1}\n${line_2}"
-	echo -ne "\033]0;$(pwd | perl -pe "s|^$HOME|~|")\007"
-}	
 
-trap 'timer_start' DEBUG
+	# echo -ne "\033]0;$(pwd | perl -pe "s|^$HOME|~|")\007"
+    # echo -ne "\033]0;$(history 1 | sed "s/^[ ]*[0-9]\+[ ]*//")\007"
+    # echo -ne "\033]0;$(whoami)@$(hostname -I | awk '{print $1}') - $(pwd | perl -pe "s|^$HOME|~|")\007"
+
+
+}
+# trap 'echo -ne "\033]0;$(whoami)@$(hostname -I | cut -d" " -f1):$(pwd | perl -pe "s|^$HOME|~|") - $BASH_COMMAND\007"; timer_start' DEBUG
+
+
+# trap 'if [[ $BASH_COMMAND != $PROMPT_COMMAND ]]; then 
+#         echo -ne "\033]0;$(whoami)@$(hostname -I | cut -d" " -f1) | 📂 $(pwd | sed "s|^$HOME|~|") | 🏃 CMD: [$BASH_COMMAND] \007"; 
+#     else 
+#         echo -ne "\033]0;$(whoami)@$(hostname -I | cut -d" " -f1) | 📂 $(pwd | sed "s|^$HOME|~|") | 😴 Idle... \007"; 
+#     fi; 
+#     timer_start' DEBUG
+
+trap 'if [[ $BASH_COMMAND != $PROMPT_COMMAND ]]; then 
+        echo -ne "\033]0; 🏃 $BASH_COMMAND\007"; 
+    else 
+        echo -ne "\033]0; 😴 $(whoami)@$(hostname -I | cut -d" " -f1) 📂 $(pwd | sed "s|^$HOME|~|") \007"; 
+    fi; 
+    timer_start' DEBUG

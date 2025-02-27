@@ -1,11 +1,42 @@
 #!/bin/bash
 
+function timer_now() {
+    echo $(date +%s%N)  # Ensure a valid number is always returned
+}
+
+function format_time() {
+    local start_time=$1
+    local current_time=$(timer_now)
+
+    if [[ -z "$start_time" || -z "$current_time" ]]; then
+        echo "0.00s"
+        return
+    fi
+
+    local delta_us=$(( (current_time - start_time) / 1000 ))  # Convert to microseconds
+    local ms=$(((delta_us / 1000) % 1000))
+    local s=$(((delta_us / 1000000) % 60))
+    local m=$(((delta_us / 60000000) % 60))
+
+    if ((m > 0)); then 
+        echo "${m}m ${s}.$(printf "%02d" $ms)s"
+    elif ((s >= 10)); then 
+        echo "${s}.$(printf "%02d" $((ms / 10)))s"
+    elif ((s > 0)); then 
+        echo "${s}.$(printf "%02d" $ms)s"
+    else 
+        echo "${ms}m"
+    fi
+}
+
+
 function spinner() {
     tput civis
     red=`tput setaf 1`
     green=`tput setaf 2`
     yellow=`tput setaf 3`
     reset=`tput sgr0`
+    bold=`tput bold`
     # Clear Line
     CL="\e[2K"
     # Spinner Character
@@ -13,20 +44,22 @@ function spinner() {
     # SPINNER="◰◳◲◱"
     SPINNER="⠙⠸⠴⠦⠇⠋"
   
+    ptimer_start=$(timer_now)
+  
     task="$@"
     while :; do
         jobs %1 > /dev/null 2>&1
         [ $? = 0 ] || {
-            printf "${green}${CL}✓ ${reset}${task}\n"
+            elapsed=$(format_time "$ptimer_start")
+            printf "${green}${bold}${CL}✓ ${reset}${task} ${green}${bold}(${elapsed})${reset}\n"
             break
         }
         for (( i=0; i<${#SPINNER}; i++ )); do
             jobs %1 > /dev/null 2>&1
-            [ $? = 0 ] || {
-                break
-            }
+            [ $? = 0 ] || break
             sleep 0.05
-            printf "${yellow}${CL}${SPINNER:$i:1} ${red}${task} ${reset}\r"
+            elapsed=$(format_time "$ptimer_start")
+            printf "${yellow}${CL}${SPINNER:$i:1} ${red}${task} ${reset}(${elapsed})\r"
         done
     done
 
@@ -36,4 +69,4 @@ function spinner() {
     tput cnorm
 }
 
-$@ > /dev/null 2>&1 & spinner "$@" 
+eval "$@" > /dev/null 2>&1 & spinner "$@" 
