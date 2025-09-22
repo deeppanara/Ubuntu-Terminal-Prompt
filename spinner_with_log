@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# timer_now() and format_time() functions remain the same.
+function timer_now() {
+    echo $(date +%s%N)
+}
+function format_time() {
+    local start_time=$1
+    local current_time=$(timer_now)
+    if [[ -z "$start_time" || -z "$current_time" ]]; then echo "0.0s"; return; fi
+    local delta_us=$(( (current_time - start_time) / 1000 ))
+    local ms=$(((delta_us / 1000) % 1000))
+    local s=$(((delta_us / 1000000) % 60))
+    local m=$(((delta_us / 60000000) % 60))
+    if ((m > 0)); then echo "${m}m ${s}.$(printf "%03d" $ms)s";
+    elif ((s > 0)); then echo "${s}.$(printf "%03d" $ms)s";
+    else echo "${ms}ms"; fi
+}
+
+function spinner() {
+    tput civis
+    red=$(tput setaf 1)
+    green=$(tput setaf 2)
+    yellow=$(tput setaf 3)
+    blue=$(tput setaf 4)
+    magenta=$(tput setaf 5)
+    cyan=$(tput setaf 6)
+    reset=$(tput sgr0)
+    bold=$(tput bold)
+
+    # Symbols with colors
+    icon_running="${yellow}⧗${reset}"   # running
+    icon_success="${green}✔${reset}"   # success
+    icon_fail="${red}✖${reset}"        # failure
+    icon_cancel="${magenta}⚑${reset}"  # cancelled
+
+    reset=$(tput sgr0); bold=$(tput bold)
+    CL="\e[2K"; SPINNER="⠙⠸⠴⠦⠇⠋"; spinner_idx=0
+
+    local pid outfile errfile
+    
+    function interrupt_handler() {
+        tput rc; tput ed; tput cnorm
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then kill "$pid"; fi
+        rm -f "$outfile" "$errfile"
+        spinner_line="${icon_cancel} ${bold}${task}${reset} ${magenta}(Cancelled)${reset}"
+        echo -e "${spinner_line}${reset}"
+        exit 130
+    }
+    trap interrupt_handler SIGINT
+
+    task="$@"
+    ptimer_start=$(timer_now)
+    outfile=$(mktemp)
+    errfile=$(mktemp)
+    term_width=$(tput cols)
+
+    for i in {1..11}; do echo; done
+    tput cuu 11
+    tput sc
+
+    eval "$@" > "$outfile" 2> "$errfile" &
+    pid=$!
+
+    while kill -0 "$pid" 2>/dev/null; do
+        tput rc   # return to saved cursor position
+
+        elapsed=$(format_time "$ptimer_start")
+        spinner_char=${SPINNER:${spinner_idx}:1}
+        spinner_idx=$(( (spinner_idx + 1) % ${#SPINNER} ))
+
+        # Clear + rewrite spinner line
+        # Build the full spinner line first
+        spinner_line="${yellow}${spinner_char}${reset} ${bold}${task}${reset} ${yellow}(${elapsed})${reset}"
+
+        # Strip ANSI codes when measuring length (to not break truncation)
+        plain_len=$(echo -e "$spinner_line" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g' | wc -c)
+
+        if (( plain_len > term_width )); then
+            # Truncate visible part and append ellipsis
+            visible=$(echo -e "$spinner_line" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g')
+            truncated="${visible:0:term_width-3}..."
+            printf "\r\033[K%s\n" "$truncated"
+        else
+            printf "\r\033[K%s\n" "$spinner_line"
+        fi
+
+        # Print last 10 lines with overwrite
+        mapfile -t last_lines < <(tail -n 10 "$outfile" | fold -w $((term_width-1)) -s)
+        for line in "${last_lines[@]}"; do
+            printf "\r\033[K%s\n" "$line"
+        done
+
+        # Pad if fewer than 10 lines
+        for ((i=${#last_lines[@]}; i<10; i++)); do
+            printf "\r\033[K\n"
+        done
+
+        tput cuu $((10))  # put cursor back above the 10 log lines
+        # sleep 0.1
+    done
+
+    wait "$pid"
+    exit_code=$?
+    trap - SIGINT
+
+    tput rc; tput ed
+
+    elapsed=$(format_time "$ptimer_start")
+    if [ $exit_code -eq 0 ]; then
+        printf "${green}${bold}✔${reset} ${task} (${green}${elapsed}${reset})\n"
+    else
+        term_width=$(tput cols)
+        printf "${red}${bold}✖ ${reset}${bold}${task}${reset} ${red}(Failed: $exit_code in ${elapsed})${reset}\n"
+        if [ -s "$errfile" ]; then
+            # printf "${red}$(printf '%*s' "$term_width" | tr ' ' '=')\n"
+            printf "🚨 ${red}ERROR OUTPUT:${reset}\n"
+            sed 's/^/    /' "$errfile"
+            printf "${red}$(printf '%*s' "$term_width" | tr ' ' '-')\n${reset}"
+        fi
+    fi
+
+    rm -f "$outfile" "$errfile"
+    tput cnorm
+
+    if [ $exit_code -ne 0 ]; then
+        exit $exit_code
+    fi
+}
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 \"<command>\""
+    echo "Example: $0 \"bash -c 'for i in {1..20}; do echo \\\"Processing item \\\$i...\\\"; sleep 0.2; done'\""
+    exit 1
+fi
+
+spinner "$@"

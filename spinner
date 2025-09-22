@@ -9,7 +9,7 @@ function format_time() {
     local current_time=$(timer_now)
 
     if [[ -z "$start_time" || -z "$current_time" ]]; then
-        echo "0.00s"
+        echo "0.0s"
         return
     fi
 
@@ -25,10 +25,9 @@ function format_time() {
     elif ((s > 0)); then 
         echo "${s}.$(printf "%02d" $ms)s"
     else 
-        echo "${ms}m"
+        echo "${ms}ms"
     fi
 }
-
 
 function spinner() {
     tput civis
@@ -39,34 +38,51 @@ function spinner() {
     bold=`tput bold`
     # Clear Line
     CL="\e[2K"
-    # Spinner Character
-    # SPINNER="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-    # SPINNER="◰◳◲◱"
     SPINNER="⠙⠸⠴⠦⠇⠋"
+    #SPINNER="🕛🕐🕑🕒🕓🕔🕕🕖🕗🕘🕙🕚"
+    # SPINNER="🔴🟠🟡🟢🔵🟣🟤⚫⚪"
+    # SPINNER="⚪⚫"
+    #SPINNER="😀😃😄😁😅😂🤣🥲😜🤪🤩😍🥰😎🤗😊🤭🤔🤨🙃😉😏😇"
   
     ptimer_start=$(timer_now)
-  
     task="$@"
-    while :; do
-        jobs %1 > /dev/null 2>&1
-        [ $? = 0 ] || {
+
+    tmpfile=$(mktemp)  # Temporary file to capture errors
+    eval "$@" > /dev/null 2> "$tmpfile" &  # Run command correctly
+    pid=$!  # Get process ID
+
+    while kill -0 "$pid" 2>/dev/null; do
+        # for (( i=0; i<${#SPINNER}; i++ )); do
+            sleep 0.1
             elapsed=$(format_time "$ptimer_start")
-            printf "${green}${bold}${CL}✓ ${reset}${task} ${green}${bold}(${elapsed})${reset}\n"
-            break
-        }
-        for (( i=0; i<${#SPINNER}; i++ )); do
-            jobs %1 > /dev/null 2>&1
-            [ $? = 0 ] || break
-            sleep 0.05
-            elapsed=$(format_time "$ptimer_start")
-            printf "${yellow}${CL}${SPINNER:$i:1} ${red}${task} ${reset}(${elapsed})\r"
-        done
+            printf "${yellow}${CL}${red}${task} ${reset}(${elapsed})\r"
+        # done
     done
 
-    #msg="${task-InProgress}"
-    task="${3-$1}"
-  
+    wait "$pid"
+    exit_code=$?
+    term_width=$(tput cols)
+    elapsed=$(format_time "$ptimer_start")
+    if [ $exit_code -eq 0 ]; then
+        printf "${green}${bold}${CL}${reset}${task} ${green}${bold}(${elapsed})${reset}\n"
+    else
+        printf "${red}$(printf "%${term_width}s" | tr ' ' '=')${reset}\n"
+        printf "${red}${bold}${CL}${reset}${task} ${red}${bold}(Failed: $exit_code)${reset}\n"
+        if [ -s "$tmpfile" ]; then
+            term_width=$(tput cols)
+            printf "\n${red}🚨 ERROR MESSAGE 🚨\n"
+            printf "====================${reset}\n"
+            cat "$tmpfile"
+            printf "${red}$(printf "%${term_width}s" | tr ' ' '-')${reset}\n\n"
+        else
+            printf "\n${red}No error message captured.${reset}\n\n"
+        fi
+        rm -f "$tmpfile"
+        exit $exit_code
+    fi
+
+    rm -f "$tmpfile"
     tput cnorm
 }
 
-eval "$@" > /dev/null 2>&1 & spinner "$@" 
+spinner "$@"

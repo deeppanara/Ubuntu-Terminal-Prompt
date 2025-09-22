@@ -131,7 +131,8 @@ line3() {
 }
 
 title() {
-    echo -e "\n${bold}${yellow}$1${reset}"  # Bold title with dots
+    echo
+    echo "${bold}${yellow}$1${reset}"
     echo -e "${bold}${yellow}$(printf '=%.0s' $(seq $((${#1}))))${reset}\n"  # Dynamic underline
 }
 
@@ -226,124 +227,221 @@ service_down () {
 	nullrun sudo service kibana stop
 }
 
-dumpsql() {
-
-    bash ~/.bash/spinner "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
-    bash ~/.bash/spinner "bash ~/OneDrive/Importent\ Data/scripts/run_sql_by_line.sh"
-
+vpn() {
+	CONFIG=~/OFFICE_VPN/sslvpn-deep.panara-client-config.ovpn
+	PASS=~/OFFICE_VPN/pass.txt
+	bash ~/.bash/spinner_with_log sudo -S openvpn --config "$CONFIG" --tun-mtu 1240 --auth-user-pass "$PASS"
 }
-# dump() {
-# 	sudo echo 1 > /dev/null
-# 	run0 sudo rm -rf app/cache/*
-#     run0 sudo rm -rf web/js/compiled/
-# 	run0 sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
-# 	run php app/console assets:install
-# 	run php app/console assetic:dump
-# 	run php app/console cache:clear
-# 	run0 sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
-# }
+
+sqlmode() {
+    # Database connection details
+    local HOST="localhost"
+    local USER="helios"
+    local PASSWORD="helios"
+    local DATABASE="${DATABASE:-}"  # optional, or set a default DB if needed
+
+    export MYSQL_PWD="$PASSWORD"
+
+    if echo "SET GLOBAL sql_mode = 'NO_ENGINE_SUBSTITUTION';" | mysql -h "$HOST" -u "$USER" "$DATABASE" 2>/dev/null; then
+        echo "✅ SQL mode updated successfully."
+    else
+        echo "❌ Failed to update SQL mode." >&2
+    fi
+}
+
 
 dump() {
+    echo "Denara#25" | sudo -S bash -c 'echo 1 > /dev/null' 2>/dev/null
 
-    sudo echo 1 > /dev/null
+    if [[ "$1" == "sql" ]]; then
+        title "Updating sql..."
+        bash ~/.bash/spinner_with_log "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
+        bash ~/.bash/spinner_with_log "bash ~/OneDrive/Importent\\ Data/scripts/run_sql_by_line.sh"
 
-    title "Updating sql..."
-    bash ~/.bash/spinner "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
-    bash ~/.bash/spinner "bash ~/OneDrive/Importent\ Data/scripts/run_sql_by_line.sh"
+    elif [[ "$1" == "js" ]]; then
+        title "Updating js..."
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
+        bash ~/.bash/spinner_with_log "php app/console assets:install"
+        bash ~/.bash/spinner_with_log "false"
+        bash ~/.bash/spinner_with_log "php app/console assetic:dump"
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
 
-    title "Updating cache..."
-    bash ~/.bash/spinner sudo rm -rf app/cache/*
-    bash ~/.bash/spinner sudo rm -rf web/js/compiled/
-    bash ~/.bash/spinner sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
-    bash ~/.bash/spinner php app/console assets:install
-    bash ~/.bash/spinner php app/console assetic:dump
+    else
+        current_php=$(php -r "echo PHP_VERSION;")
+        if [[ "$current_php" != 5.6* ]]; then
+            title "Switching to PHP 5.6..."
+            echo "Denara#25" | sudo -S update-alternatives --set php /usr/bin/php5.6
+        fi
 
-    title "Updating cache..."
-    bash ~/.bash/spinner php app/console cache:clear
-    bash ~/.bash/spinner sudo chmod -R 777 app/cache/ app/logs/ web/uploads/
+        title "Updating SQL..."
+        bash ~/.bash/spinner_with_log "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
+        bash ~/.bash/spinner_with_log "bash ~/OneDrive/Importent\\ Data/scripts/run_sql_by_line.sh"
+
+        title "Updating cache..."
+        # bash ~/.bash/spinner_with_log "sudo rm -rf app/cache/* web/js/compiled/"
+        bash ~/.bash/spinner_with_log "sudo rm -rf web/js/compiled/"
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
+        bash ~/.bash/spinner_with_log "php app/console cache:warmup"
+        bash ~/.bash/spinner_with_log "php app/console assets:install"
+        bash ~/.bash/spinner_with_log "php app/console assetic:dump"
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
+    fi
+}
+localq() {
+    
+    run bash /home/deep.panara@hs.local/OneDrive/Importent\ Data/scripts/localstack.bash
+
+}
+
+processXXX() {
+    cmd="$1"
+    declare -a last_lines=()
+
+    for _ in {1..5}; do echo; done
+
+    $cmd 2>&1 | while IFS= read -r line; do
+        last_lines+=("$line")
+        (( ${#last_lines[@]} > 5 )) && last_lines=("${last_lines[@]:1}")
+
+        tput cuu 5
+        for ((i=0; i<5; i++)); do
+            if [[ $i -lt ${#last_lines[@]} ]]; then
+                printf "\r\033[K%s\n" "${last_lines[$i]}"
+            else
+                printf "\r\033[K\n"
+            fi
+        done
+    done
+
+    # --- cleanup after command completes ---
+    tput cuu 5
+    for ((i=0; i<5; i++)); do
+        printf "\r\033[K\n"
+    done
 }
 
 
-queue_count() {
-	while true; do
-	    for queue in \
-		"local-duell-main" \
-		"local-duell-import" \
-		"local-duell-manual" \
-		"duell-daily-cron.fifo"
-	    do
-		count=$(awslocal sqs get-queue-attributes --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/$queue --attribute-names ApproximateNumberOfMessages --query 'Attributes.ApproximateNumberOfMessages')
-	
-		output="Queue: $queue, Message Count: $count"
-		echo -e "$output"
-	    done
-	    
-	    
-	done
+qcount() {
+    queues=(
+        "local-duell-main"
+        "local-duell-import"
+        "local-duell-manual"
+        "duell-daily-cron"
+        "duell-daily-cron.fifo"
+    )
+
+    fetch_count() {
+        queue=$1
+        count=$(awslocal sqs get-queue-attributes \
+            --queue-url "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/$queue" \
+            --attribute-names ApproximateNumberOfMessages \
+            --query 'Attributes.ApproximateNumberOfMessages' \
+            --output text 2>/dev/null)
+        [[ $? -ne 0 || -z "$count" ]] && count="ERR"
+        echo "$queue:$count"
+    }
+
+    print_header() {
+        echo "+----------------------+---------------------------+---------------------------+---------------------------+---------------------------+---------------------------+"
+        printf "| %-20s " "Time"
+        for q in "${queues[@]}"; do
+            printf "| %-25s " "$q"
+        done
+        echo "|"
+        echo "+----------------------+---------------------------+---------------------------+---------------------------+---------------------------+---------------------------+"
+    }
+
+    export -f fetch_count
+
+    declare -a last_rows=()
+
+    # print header once
+    print_header
+
+    # reserve 12 lines
+    for _ in {1..10}; do echo; done
+
+    while true; do
+        declare -A counts
+        results=$(parallel fetch_count ::: "${queues[@]}")
+
+        timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+        line=$(printf "| %-20s " "$timestamp")
+
+        while IFS=":" read -r key val; do
+            counts["$key"]="$val"
+        done <<< "$results"
+
+        for q in "${queues[@]}"; do
+            line+=$(printf "| %-25s " "${counts[$q]}")
+        done
+        line+="|"
+
+        sep="+----------------------+---------------------------+---------------------------+---------------------------+---------------------------+---------------------------+"
+
+        last_rows+=("$line" "$sep")
+        (( ${#last_rows[@]} > 10 )) && last_rows=("${last_rows[@]:2}")
+
+        # move cursor up 12 lines (back into reserved area)
+        tput cuu 10
+
+        # redraw 12 lines (pad if fewer)
+        for ((i=0; i<10; i++)); do
+            if [[ $i -lt ${#last_rows[@]} ]]; then
+                printf "%s\n" "${last_rows[$i]}"
+            else
+                printf "%*s\n" 149 " "  # blank line, table width
+            fi
+        done
+
+        sleep 1
+    done
 }
 
-oro_reset () {
-    run  mysqladmin -proot -uroot DROP b2b_crm_dev;
-    run  mysqladmin -proot -uroot CREATE b2b_crm_dev;
-    run0 run rm -rf var/cache
-    run  php -d memory_limit=8G bin/console oro:install --timeout=2000 --language=en --formatting-code=en_US --organization-name='ORO' --user-name=admin --user-email=admin@example.com --user-firstname=Admin --user-lastname=Dom --user-password='admin' --sample-data=y --application-url='http://oro.local.new.com/'
-    run0 rm -rf var/cache
-    run  php bin/console c:c -vv
-}
-
-oro_load () {
-    run0 rm -rf var/cache
-    run bin/console oro:migration:load --force
-    run bin/console oro:migration:data:load  --fixtures-type=demo
-    run php bin/console c:c -vv
-}
-
-oro_update () {
-    run bin/console oro:migration:load --force
-    run bin/console oro:migration:data:load  --fixtures-type=demo
-    run php bin/console c:c -vv
-    php bin/console oro:assets:install --symlink
-}
 
 function ext {
- if [ -z "$1" ]; then
-    # display usage if no parameters given
-    echo "Usage: extract <path/file_name>.<zip|rar|bz2|gz|tar|tbz2|tgz|Z|7z|xz|ex|tar.bz2|tar.gz|tar.xz>"
-    echo "       extract <path/file_name_1.ext> [path/file_name_2.ext] [path/file_name_3.ext]"
-    return 1
- else
-    for n in $@
-    do
-      if [ -f "$n" ] ; then
-          case "${n%,}" in
-            *.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar)
-                         run tar xvf "$n"       ;;
-            *.lzma)      run unlzma ./"$n"      ;;
-            *.bz2)       run bunzip2 ./"$n"     ;;
-            *.rar)       run unrar x -ad ./"$n" ;;
-            *.gz)        run gunzip ./"$n"      ;;
-            *.zip)       run unzip ./"$n"       ;;
-            *.z)         run uncompress ./"$n"  ;;
-            *.7z|*.arj|*.cab|*.chm|*.deb|*.dmg|*.iso|*.lzh|*.msi|*.rpm|*.udf|*.wim|*.xar)
-                         run 7z x ./"$n"        ;;
-            *.xz)        run unxz ./"$n"        ;;
-            *.exe)       run cabextract ./"$n"  ;;
-            *)
-                         echo "extract: '$n' - unknown archive method"
-                         return 1
-                         ;;
-          esac
-      else
-          echo "'$n' - file does not exist"
-          return 1
-      fi
-    done
-fi
+    if [ -z "$1" ]; then
+        # display usage if no parameters given
+        echo "Usage: extract <path/file_name>.<zip|rar|bz2|gz|tar|tbz2|tgz|Z|7z|xz|ex|tar.bz2|tar.gz|tar.xz>"
+        echo "       extract <path/file_name_1.ext> [path/file_name_2.ext] [path/file_name_3.ext]"
+        return 1
+    else
+        for n in $@
+            do
+                if [ -f "$n" ] ; then
+                  case "${n%,}" in
+                    *.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar)
+                                 run tar xvf "$n"       ;;
+                    *.lzma)      run unlzma ./"$n"      ;;
+                    *.bz2)       run bunzip2 ./"$n"     ;;
+                    *.rar)       run unrar x -ad ./"$n" ;;
+                    *.gz)        run gunzip ./"$n"      ;;
+                    *.zip)       run unzip ./"$n"       ;;
+                    *.z)         run uncompress ./"$n"  ;;
+                    *.7z|*.arj|*.cab|*.chm|*.deb|*.dmg|*.iso|*.lzh|*.msi|*.rpm|*.udf|*.wim|*.xar)
+                                 run 7z x ./"$n"        ;;
+                    *.xz)        run unxz ./"$n"        ;;
+                    *.exe)       run cabextract ./"$n"  ;;
+                    *)
+                                 echo "extract: '$n' - unknown archive method"
+                                 return 1
+                                 ;;
+                  esac
+                else
+                  echo "'$n' - file does not exist"
+                  return 1
+                fi
+            done
+    fi
 }
+
+############################################################ ALIAS ##########################################################
 
 if [ -f ~/.bash/bash_aliases ]; then
     . ~/.bash/bash_aliases
 fi
+
+############################################################ PROMT ##########################################################
 
 function _padding {
     # Creates a string of spaces of the passed size
