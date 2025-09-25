@@ -35,10 +35,10 @@ function spinner() {
     icon_cancel="${magenta}⚑${reset}"  # cancelled
 
     reset=$(tput sgr0); bold=$(tput bold)
-    CL="\e[2K"; SPINNER="⠙⠸⠴⠦⠇⠋"; spinner_idx=0
+    CL="\e[2K"; SPINNER="⠙⠙⠙⠙⠙⠙⠸⠸⠸⠸⠸⠸⠴⠴⠴⠴⠴⠴⠴⠦⠦⠦⠦⠦⠦⠦⠇⠇⠇⠇⠇⠇⠋⠋⠋⠋⠋⠋⠋"; spinner_idx=0
 
     local pid outfile errfile
-    
+
     function interrupt_handler() {
         tput rc; tput ed; tput cnorm
         if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then kill "$pid"; fi
@@ -69,36 +69,52 @@ function spinner() {
         spinner_char=${SPINNER:${spinner_idx}:1}
         spinner_idx=$(( (spinner_idx + 1) % ${#SPINNER} ))
 
-        # Clear + rewrite spinner line
-        # Build the full spinner line first
+        # Build spinner line
         spinner_line="${yellow}${spinner_char}${reset} ${bold}${task}${reset} ${yellow}(${elapsed})${reset}"
 
-        # Strip ANSI codes when measuring length (to not break truncation)
-        plain_len=$(echo -e "$spinner_line" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g' | wc -c)
+        # Strip ANSI for length check
+        plain_line=$(echo -e "$spinner_line" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g')
+        plain_len=${#plain_line}
 
         if (( plain_len > term_width )); then
-            # Truncate visible part and append ellipsis
-            visible=$(echo -e "$spinner_line" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g')
-            truncated="${visible:0:term_width-3}..."
+            truncated="${plain_line:0:term_width-3}..."
             printf "\r\033[K%s\n" "$truncated"
         else
             printf "\r\033[K%s\n" "$spinner_line"
         fi
 
-        # Print last 10 lines with overwrite
-        mapfile -t last_lines < <(tail -n 10 "$outfile" | fold -w $((term_width-1)) -s)
-        for line in "${last_lines[@]}"; do
-            printf "\r\033[K%s\n" "$line"
-        done
+        # Collect last 10 wrapped lines
+        mapfile -t last_lines < <(tail -n 10 "$outfile" | fold -w $((term_width-5)) -s)
 
-        # Pad if fewer than 10 lines
-        for ((i=${#last_lines[@]}; i<10; i++)); do
-            printf "\r\033[K\n"
-        done
+        # Number of lines to print (min of 10 or array length)
+        count=${#last_lines[@]}
+        (( count > 10 )) && count=10
 
-        tput cuu $((10))  # put cursor back above the 10 log lines
+        # Print only what's available
+        # Print lines, use └ for the last one
+        for ((i=0; i<count; i++)); do
+            if (( i == count-1 )); then
+                prefix="└"
+            else
+                prefix="├"
+            fi
+            printf "\r\033[K%s\n" "  ${yellow}${prefix}─${reset} ${last_lines[i]}"
+        done
+        # # Ensure exactly 10 lines printed
+        # for ((i=0; i<10; i++)); do
+        #     if [[ -n ${last_lines[$i]} ]]; then
+        #         printf "\r\033[K%s\n" "${yellow}├─${reset} ${last_lines[$i]}"
+        #     else
+        #         printf "\r\033[K\n"
+        #     fi
+        # done
+
+        # Move cursor back up 10 log lines
+        tput cuu 10
+
         # sleep 0.1
     done
+
 
     wait "$pid"
     exit_code=$?
@@ -128,10 +144,10 @@ function spinner() {
     fi
 }
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 \"<command>\""
-    echo "Example: $0 \"bash -c 'for i in {1..20}; do echo \\\"Processing item \\\$i...\\\"; sleep 0.2; done'\""
-    exit 1
-fi
+# if [ $# -eq 0 ]; then
+#     echo "Usage: $0 \"<command>\""
+#     echo "Example: $0 \"bash -c 'for i in {1..20}; do echo \\\"Processing item \\\$i...\\\"; sleep 0.2; done'\""
+#     exit 1
+# fi
 
 spinner "$@"
