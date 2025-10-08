@@ -18,11 +18,6 @@ function line3() {
     echo ${green}$(seq -s '━╸' 1 $(( $(tput cols) / 2 )) | tr -d '[:digit:]')${reset}
 }
 
-# Safe color defaults
-bold=${bold:-$(tput bold 2>/dev/null || echo '')}
-yellow=${yellow:-$(tput setaf 3 2>/dev/null || echo '')}
-reset=${reset:-$(tput sgr0 2>/dev/null || echo '')}
-
 function title1() {
     local str="$1"
     local len=${#str}
@@ -37,8 +32,6 @@ function title1() {
     # Print title + underline safely
     printf "\n%s\n%s\n\n" "${bold}${yellow}${str}${reset}" "${bold}${yellow}${underline}${reset}"
 }
-
-
 
 function run()
 {
@@ -146,6 +139,8 @@ function sqlmode() {
 function dump() {
     echo "Denara#25" | sudo -S bash -c 'echo 1 > /dev/null' 2>/dev/null
 
+    trap 'echo "Aborted."; kill 0; exit 130' INT
+
     if [[ "$1" == "sql" ]]; then
         title1 "Updating sql..."
         bash ~/.bash/spinner_with_log "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
@@ -171,13 +166,15 @@ function dump() {
 
         title1 "Updating cache..."
         # bash ~/.bash/spinner_with_log "sudo rm -rf app/cache/* web/js/compiled/"
-        bash ~/.bash/spinner_with_log "sudo rm -rf web/js/compiled/"
+        bash ~/.bash/spinner_with_log "sudo rm -rf web/js/compiled/ "
         bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
-        bash ~/.bash/spinner_with_log "php app/console cache:warmup"
+        bash ~/.bash/spinner_with_log "php app/console c:c -v"
         bash ~/.bash/spinner_with_log "php app/console assets:install"
         bash ~/.bash/spinner_with_log "php app/console assetic:dump"
         bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
     fi
+
+    trap - INT  # cleanup trap after function finishes          
 }
 function localq() {
     
@@ -211,9 +208,11 @@ function processXXX() {
         printf "\r\033[K\n"
     done
 }
+qcount() {
+  bash -c "$(declare -f qcount_bash); qcount_bash"
+}
 
-
-function qcount() {
+function qcount_bash() {
     queues=(
         "local-duell-main"
         "local-duell-import"

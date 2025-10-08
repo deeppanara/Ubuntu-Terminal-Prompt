@@ -100,17 +100,8 @@ function spinner() {
             fi
             printf "\r\033[K%s\n" "  ${yellow}${prefix}─${reset} ${last_lines[i]}"
         done
-        # # Ensure exactly 10 lines printed
-        # for ((i=0; i<10; i++)); do
-        #     if [[ -n ${last_lines[$i]} ]]; then
-        #         printf "\r\033[K%s\n" "${yellow}├─${reset} ${last_lines[$i]}"
-        #     else
-        #         printf "\r\033[K\n"
-        #     fi
-        # done
 
-        # Move cursor back up 10 log lines
-        tput cuu 10
+        # echo -en "\033[6n"; IFS=';' read -sdR -p "" row col; row=${row#*[}; echo "row=$row col=$col"
 
         # sleep 0.1
     done
@@ -135,7 +126,7 @@ function spinner() {
             printf "${red}$(printf '%*s' "$term_width" | tr ' ' '-')\n${reset}"
         fi
     fi
-
+    
     rm -f "$outfile" "$errfile"
     tput cnorm
 

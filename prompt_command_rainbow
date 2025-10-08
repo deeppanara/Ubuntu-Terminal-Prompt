@@ -1,0 +1,371 @@
+#!/bin/bash
+
+# -----------------------------------------------------------------------------
+# Author: Deep Panara (panaradeep@gmail.com)
+#
+# Note: I don't provide a warranty of any kind with this software! On the plus
+# side, however, please feel free to distribute this file to your friends,
+# family, pets etc. (So long as you keep this attribution)
+# -----------------------------------------------------------------------------
+
+# NOTE colours will just fail silently if not present aside from the intial
+# warning that .bash_colours is missing.
+#!/bin/bash
+
+#################################################################################################
+
+## how to install
+#
+# add this line in .bashrc file
+#
+# source ~/.bash/prompt_command
+# export PROMPT_COMMAND="prompt_command"
+#
+#################################################################################################
+#
+# Mostly sourced from
+# http://mediadoneright.com/content/ultimate-git-ps1-bash-prompt
+
+Color_Off="\[\033[0m\]"       # Text Reset
+
+Bold="\[\033[1m\]"
+Dim="\[\033[2m\]"
+Italic="\[\033[3m\]"
+Underline="\[\033[4m\]"
+Blink="\[\033[5m\]"
+Reverse="\[\033[7m\]"
+Hidden="\[\033[8m\]"
+Strike="\[\033[9m\]"
+
+# Regular Colors
+Black="\[\033[0;30m\]"        # Black
+LightGray="\[\033[0;37m\]"    # Light Gray
+DarkGray="\[\033[1;30m\]"     # Dark Gray
+Red="\[\033[0;31m\]"          # Red
+Green="\[\033[0;32m\]"        # Green
+Yellow="\[\033[0;33m\]"       # Yellow
+Blue="\[\033[0;34m\]"         # Blue
+Purple="\[\033[0;35m\]"       # Purple
+Cyan="\[\033[0;36m\]"         # Cyan
+White="\[\033[0;37m\]"        # White
+
+# Bold
+BBlack="\[\033[1;30m\]"       # Black
+BRed="\[\033[1;31m\]"         # Red
+BGreen="\[\033[1;32m\]"       # Green
+BYellow="\[\033[1;33m\]"      # Yellow
+BBlue="\[\033[1;34m\]"        # Blue
+BPurple="\[\033[1;35m\]"      # Purple
+BCyan="\[\033[1;36m\]"        # Cyan
+BWhite="\[\033[1;37m\]"       # White
+
+# Underline
+UBlack="\[\033[4;30m\]"       # Black
+URed="\[\033[4;31m\]"         # Red
+UGreen="\[\033[4;32m\]"       # Green
+UYellow="\[\033[4;33m\]"      # Yellow
+UBlue="\[\033[4;34m\]"        # Blue
+UPurple="\[\033[4;35m\]"      # Purple
+UCyan="\[\033[4;36m\]"        # Cyan
+UWhite="\[\033[4;37m\]"       # White
+
+# Background
+On_Black="\[\033[40m\]"       # Black
+On_Red="\[\033[41m\]"         # Red
+On_Green="\[\033[42m\]"       # Green
+On_Yellow="\[\033[43m\]"      # Yellow
+On_Blue="\[\033[44m\]"        # Blue
+On_Purple="\[\033[45m\]"      # Purple
+On_Cyan="\[\033[46m\]"        # Cyan
+On_White="\[\033[47m\]"       # White
+
+# High Intensty
+IBlack="\[\033[0;90m\]"       # Black
+IRed="\[\033[0;91m\]"         # Red
+IGreen="\[\033[0;92m\]"       # Green
+IYellow="\[\033[0;93m\]"      # Yellow
+IBlue="\[\033[0;94m\]"        # Blue
+IPurple="\[\033[0;95m\]"      # Purple
+ICyan="\[\033[0;96m\]"        # Cyan
+IWhite="\[\033[0;97m\]"       # White
+
+# Bold High Intensty
+BIBlack="\[\033[1;90m\]"      # Black
+BIRed="\[\033[1;91m\]"        # Red
+BIGreen="\[\033[1;92m\]"      # Green
+BIYellow="\[\033[1;93m\]"     # Yellow
+BIBlue="\[\033[1;94m\]"       # Blue
+BIPurple="\[\033[1;95m\]"     # Purple
+BICyan="\[\033[1;96m\]"       # Cyan
+BIWhite="\[\033[1;97m\]"      # White
+
+# High Intensty backgrounds
+On_IBlack="\[\033[0;100m\]"   # Black
+On_IRed="\[\033[0;101m\]"     # Red
+On_IGreen="\[\033[0;102m\]"   # Green
+On_IYellow="\[\033[0;103m\]"  # Yellow
+On_IBlue="\[\033[0;104m\]"    # Blue
+On_IPurple="\[\033[10;95m\]"  # Purple
+On_ICyan="\[\033[0;106m\]"    # Cyan
+On_IWhite="\[\033[0;107m\]"   # White
+
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
+
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+############################################################ ALIAS ##########################################################
+
+if [ -f ~/.bash/bash_aliases ]; then
+    . ~/.bash/bash_aliases
+fi
+
+if [ -f ~/.bash/bash_function ]; then
+    . ~/.bash/bash_function
+fi
+############################################################ PROMT ##########################################################
+
+function _padding {
+    # Creates a string of spaces of the passed size
+    local size=$1
+    local result
+    printf -v result "%${size}s" ' '
+    echo "$result"
+}
+function _repeat_chars {
+    # Creates a string of <size> repeats of <char>
+    local char=$1
+    local size=$2
+    local temp_str=$(_padding ${size})
+    echo ${temp_str// /${char}}
+}
+
+if ! __git_ps1 &> /dev/null; then
+    # Redefine __git_ps1 to print a helpful warning if it's not installed
+    function __git_ps1 {
+        echo '[Install __git_ps1]'
+    }
+fi
+
+function timer_now {
+    date +%s%N
+}
+
+function timer_start {
+    timer_start=${timer_start:-$(timer_now)}
+}
+
+function timer_stop {
+    local delta_us=$((($(timer_now) - $timer_start) / 1000))
+    local us=$((delta_us % 1000))
+    local ms=$(((delta_us / 1000) % 1000))
+    local s=$(((delta_us / 1000000) % 60))
+    local m=$(((delta_us / 60000000) % 60))
+    local h=$((delta_us / 3600000000))
+    # Goal: always show around 3 digits of accuracy
+    if ((h > 0)); then timer_show="${h}h ${m}m"
+    elif ((m > 0)); then timer_show="${m}m ${s}s"
+    elif ((s >= 10)); then timer_show="${s}.$((ms / 10))s"
+    elif ((s > 0)); then timer_show="${s}.$(printf %02d $ms)s"
+    elif ((ms >= 100)); then timer_show="${ms}ms"
+    elif ((ms > 0)); then timer_show="${ms}.$((us / 10))ms"
+    else timer_show="${us}us"
+    fi
+    unset timer_start
+}
+
+function prompt_command {
+    # Must be the first thing we do, otherwise other exit statuses overwrite $?
+    local exit_status=$?
+    if [[ $exit_status == 0 ]]; then
+        local exit_status_text="${On_Yellow}${BGreen}${On_Green}${BBlack} ✔ ${Color_Off}"
+    else
+        local exit_status_text="${On_Yellow}${BRed}${On_Red}${BYellow} ✗ ${Color_Off}"
+    fi
+
+    timer_stop
+    if [[ ${timer_show} != "" ]]; then
+        local timer_text=" ${BYellow}${Black}${On_Yellow}${timer_now}${timer_show} ${Color_Off}"
+    fi
+
+    # Must run this early because when we use $() this adds to our jobs count
+    local total_jobs=$(jobs | wc -l | perl -pe 's/\s+//g')
+    local stopped_jobs=$(jobs -s | wc -l | perl -pe 's/\s+//g')
+    if [[ ${total_jobs} != 0 ]]; then
+        if [[ ${stopped_jobs} == 0 ]]; then
+            local jobs_text=" ${LightGray}[${total_jobs}] ${Color_Off}"
+        else
+            local jobs_text=" ${LightGray}[${BRed}${stopped_jobs}${LightGray}/${total_jobs}] ${Color_Off}"
+        fi
+    fi
+
+    local virtual_env_text=""
+    if [[ -n $VIRTUAL_ENV ]]; then
+        virtual_env_text="${DarkGray} $(basename $VIRTUAL_ENV)${Color_Off}"
+    fi
+
+
+    local git_text git_ahead
+    if git branch &> /dev/null; then
+        # git is working and we're on a git branch
+
+        if [[ "$(__git_ps1)" =~ 'GIT_DIR!' ]]; then
+            # we're in the git directory!
+            git_text="${Purple}$(__git_ps1) ${Color_Off}"
+        else
+            if git status | grep "nothing to commit" > /dev/null 2>&1; then
+                # Clean repository - nothing to commit
+                # git_text="${BBlue}${Color_Off}${Green} $(__git_ps1 "(branch %s)") ${Color_Off}"
+                git_text="${On_Yellow}${BBlue} ${Color_Off}${On_Yellow}${Black}${On_Yellow}$(__git_ps1 "%s") ${Color_Off}${BYellow}${Color_Off}"
+            elif git status | grep "nothing added to commit but untracked files present" > /dev/null 2>&1; then
+                # No changes but files to add
+                git_text="${BYellow}${Color_Off}${Cyan} $(__git_ps1 "[%s]") ${Color_Off}"
+            else
+                # Changes to working tree
+                git_text="${On_Yellow}${BBlue} ${Color_Off}${On_Yellow}${Red}${On_Yellow}$(__git_ps1 "%s") ${Color_Off}${BYellow}${Color_Off}"
+            fi
+            # DIFF=$(git status --porcelain | wc -l)
+            # TAGS=
+            # if [ "x$DIFF" != "x0" ]; then
+            #     TAGS="$TAGS${Cyan}Total:${Color_Off}${LightGray}$DIFF${Color_Off}"
+            #     TAGS="$TAGS ${Cyan}Modified:${Color_Off}${LightGray}$(git status --porcelain | grep ' M' | wc -l)${Color_Off}"
+            #     TAGS="$TAGS ${Cyan}New:${Color_Off}${LightGray}$(git status --porcelain | grep '??' | wc -l)${Color_Off}"
+            #     git_text="${git_text}${Yellow}[${Color_Off}${TAGS}${Yellow}] ${Color_Off}"
+            # fi
+
+            # git_ahead=$(git status | awk '/Your branch is ahead/{print $8 "↑" ""}\
+            #     /Your branch is behind/{print $7 "↓"}\
+            #     /diverged/,/respectively/{if ($0 ~ /respectively/) print $5 "↕" $3 " "}')
+
+            # if [ "X${git_ahead}" != "X" ]; then
+            #     git_ahead="${Yellow}[ ${Color_Off}${LightGray}${git_ahead}${Color_Off}${Yellow} ]${Color_Off}"
+            # fi
+
+        fi
+    else
+        # prompt component when not in git
+        git_text=${BBlue}${Color_Off}
+    fi
+
+
+    # local git_text git_ahead
+    # if git branch &> /dev/null; then
+    #     # git is working and we're on a git branch
+    #     if [[ "$(__git_ps1)" =~ 'GIT_DIR!' ]]; then
+    #         # we're in the git directory!
+    #         git_text="${Purple}$(__git_ps1) ${Color_Off}"
+    #     else
+    #         if git status | grep "nothing to commit" > /dev/null 2>&1; then
+    #             # Clean repository - nothing to commit
+    #             git_text="${Green} $(__git_ps1 "(branch %s)") ${Color_Off}"
+    #         elif git status | grep "nothing added to commit but untracked files present" > /dev/null 2>&1; then
+    #             # No changes but files to add
+    #             git_text="${Cyan} $(__git_ps1 "[%s]") ${Color_Off}"
+    #         else
+    #             # Changes to working tree
+    #             git_text="${Red} $(__git_ps1 "${Green}{${Color_Off}${Red}branch %s${Color_Off}${Green}}${Color_Off}") ${Color_Off}"
+    #         fi
+    #         # DIFF=$(git status --porcelain | wc -l)
+    #         # TAGS=
+    #         # if [ "x$DIFF" != "x0" ]; then
+    #         #     TAGS="$TAGS${Cyan}Total:${Color_Off}${LightGray}$DIFF${Color_Off}"
+    #         #     TAGS="$TAGS ${Cyan}Modified:${Color_Off}${LightGray}$(git status --porcelain | grep ' M' | wc -l)${Color_Off}"
+    #         #     TAGS="$TAGS ${Cyan}New:${Color_Off}${LightGray}$(git status --porcelain | grep '??' | wc -l)${Color_Off}"
+    #         #     git_text="${git_text}${Yellow}[${Color_Off}${TAGS}${Yellow}] ${Color_Off}"
+    #         # fi
+
+    #         git_ahead=$(git status | awk '/Your branch is ahead/{print $8 "↑" ""}\
+    #             /Your branch is behind/{print $7 "↓"}\
+    #             /diverged/,/respectively/{if ($0 ~ /respectively/) print $5 "↕" $3 " "}')
+
+    #         if [ "X${git_ahead}" != "X" ]; then
+    #             git_ahead="${Yellow}[ ${Color_Off}${LightGray}${git_ahead}${Color_Off}${Yellow} ]${Color_Off}"
+    #         fi
+
+    #     fi
+    # else
+    #     # prompt component when not in git
+    #     git_text=${BBlue}${Color_Off}
+    # fi
+    local hostname=`hostname -s`
+    local username=$(whoami)
+    # local host_text="${BGreen}${On_Blue}${username}@${hostname}${Color_Off}"
+    local host_text="${White}${Black}${On_White}   ${Color_Off}${White}${On_Blue}${Color_Off}"
+    # local pwd_text="$(pwd | perl -pe "s|^$HOME|~|")"
+
+    local pwd_text="$(pwd | sed "s#^$HOME#~#")"
+    local pwd_text="${On_Blue}${BIWhite}   ${pwd_text} ${Color_Off}"
+    # local date_text="${Yellow}$(date "+%I:%M:%S %p")${Color_Off}"
+    local date_text=
+    local prompt_char=${BWhite}'╰➤ '${Color_Off}
+    local exit_status_text="${exit_status_text}"
+    local jobs_text="${jobs_text}"
+
+    local tmux_text tmux_session tmux_group num_tmux_attached_clients
+    local num_tmux_group_clients num_tmux_clients
+    if which tmux &> /dev/null && [[ -n $TMUX ]]; then
+        tmux_session=$(tmux display-message -p '#S')
+        num_tmux_attached_clients=$(tmux list-clients -t ${tmux_session} | wc -l)
+        tmux_group=$(tmux list-sessions | grep "^${tmux_session}:" | grep -o "(group [0-9]*)" | grep -o "[0-9]*")
+        num_tmux_group_clients=$(tmux list-sessions | grep "group ${tmux_group}" | wc -l)
+        # The main session will be counted in both attached clients and groups:
+        # FIXME: this seems to be bad now?!
+        #let num_tmux_group_clients-=1
+        num_tmux_clients=$((${num_tmux_attached_clients} + ${num_tmux_group_clients}))
+        if [[ ${num_tmux_clients} -gt 1 ]]; then
+            tmux_text="${Yellow}⎚ ${num_tmux_clients} ${Color_Off}"
+        fi
+    fi
+
+    local remove_color_codes_regex="s/\\\\\[\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]\\\\\]//g"
+    local length_elements=$(echo -e "┬─${host_text}${pwd_text}${virtual_env_text}${git_text}${git_ahead}${tmux_text}${jobs_text}${date_text}${timer_text}${exit_status_text}" | perl -pe $remove_color_codes_regex)
+    local rule_length=$(($COLUMNS - ${#length_elements}))
+
+    local rule
+    if [[ ${rule_length} -gt 0 ]]; then
+        # Everything fits on the info line
+        rule="${White}$(_repeat_chars '─' ${rule_length})"
+    elif [[ ${rule_length} == 0 ]]; then
+        # Everything JUST fits on the info line
+        rule=""
+    else
+        # We need to truncate our path because the info line is too short
+        pwd_text="…${pwd_text:$((${rule_length} * -1))}"
+        rule=""
+    fi
+
+    local line_1="${BWhite}┬─${Color_Off}${host_text}${pwd_text}${virtual_env_text}${git_text}${git_ahead}${rule}${tmux_text}${jobs_text}${date_text}${timer_text}${exit_status_text}"
+    local line_2="${prompt_char}"
+    
+    tput cnorm
+    PS1="${line_1}\n${line_2}"
+
+	# echo -ne "\033]0;$(pwd | perl -pe "s|^$HOME|~|")\007"
+    # echo -ne "\033]0;$(history 1 | sed "s/^[ ]*[0-9]\+[ ]*//")\007"
+    # echo -ne "\033]0;$(whoami)@$(hostname -I | awk '{print $1}') - $(pwd | perl -pe "s|^$HOME|~|")\007"
+
+
+}
+# trap 'echo -ne "\033]0;$(whoami)@$(hostname -I | cut -d" " -f1):$(pwd | perl -pe "s|^$HOME|~|") - $BASH_COMMAND\007"; timer_start' DEBUG
+
+
+# trap 'if [[ $BASH_COMMAND != $PROMPT_COMMAND ]]; then 
+#         echo -ne "\033]0;$(whoami)@$(hostname -I | cut -d" " -f1) | 📂 $(pwd | sed "s|^$HOME|~|") | 🏃 CMD: [$BASH_COMMAND] \007"; 
+#     else 
+#         echo -ne "\033]0;$(whoami)@$(hostname -I | cut -d" " -f1) | 📂 $(pwd | sed "s|^$HOME|~|") | 😴 Idle... \007"; 
+#     fi; 
+#     timer_start' DEBUG
+
+trap 'if [[ $BASH_COMMAND != $PROMPT_COMMAND ]]; then 
+        echo -ne "\033]0; 🏃 $BASH_COMMAND\007"; 
+    else 
+        echo -ne "\033]0; 😴 $(whoami)@$(hostname -I | cut -d" " -f1) 📂 $(pwd | sed "s|^$HOME|~|") \007"; 
+    fi; 
+    timer_start' DEBUG

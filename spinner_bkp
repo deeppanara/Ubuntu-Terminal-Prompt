@@ -1,0 +1,88 @@
+#!/bin/bash
+
+function timer_now() {
+    echo $(date +%s%N)  # Ensure a valid number is always returned
+}
+
+function format_time() {
+    local start_time=$1
+    local current_time=$(timer_now)
+
+    if [[ -z "$start_time" || -z "$current_time" ]]; then
+        echo "0.0s"
+        return
+    fi
+
+    local delta_us=$(( (current_time - start_time) / 1000 ))  # Convert to microseconds
+    local ms=$(((delta_us / 1000) % 1000))
+    local s=$(((delta_us / 1000000) % 60))
+    local m=$(((delta_us / 60000000) % 60))
+
+    if ((m > 0)); then 
+        echo "${m}m ${s}.$(printf "%02d" $ms)s"
+    elif ((s >= 10)); then 
+        echo "${s}.$(printf "%02d" $((ms / 10)))s"
+    elif ((s > 0)); then 
+        echo "${s}.$(printf "%02d" $ms)s"
+    else 
+        echo "${ms}ms"
+    fi
+}
+
+function spinner() {
+    tput civis
+    red=`tput setaf 1`
+    green=`tput setaf 2`
+    yellow=`tput setaf 3`
+    reset=`tput sgr0`
+    bold=`tput bold`
+    # Clear Line
+    CL="\e[2K"
+    SPINNER="⠙⠸⠴⠦⠇⠋"
+    #SPINNER="🕛🕐🕑🕒🕓🕔🕕🕖🕗🕘🕙🕚"
+    # SPINNER="🔴🟠🟡🟢🔵🟣🟤⚫⚪"
+    # SPINNER="⚪⚫"
+    #SPINNER="😀😃😄😁😅😂🤣🥲😜🤪🤩😍🥰😎🤗😊🤭🤔🤨🙃😉😏😇"
+  
+    ptimer_start=$(timer_now)
+    task="$@"
+
+    tmpfile=$(mktemp)  # Temporary file to capture errors
+    eval "$@" > /dev/null 2> "$tmpfile" &  # Run command correctly
+    pid=$!  # Get process ID
+
+    while kill -0 "$pid" 2>/dev/null; do
+        # for (( i=0; i<${#SPINNER}; i++ )); do
+            sleep 0.1
+            elapsed=$(format_time "$ptimer_start")
+            printf "${yellow}${CL}${red}${task} ${reset}(${elapsed})\r"
+        # done
+    done
+
+    wait "$pid"
+    exit_code=$?
+    term_width=$(tput cols)
+    elapsed=$(format_time "$ptimer_start")
+    if [ $exit_code -eq 0 ]; then
+        printf "${green}${bold}${CL}${reset}${task} ${green}${bold}(${elapsed})${reset}\n"
+    else
+        printf "${red}$(printf "%${term_width}s" | tr ' ' '=')${reset}\n"
+        printf "${red}${bold}${CL}${reset}${task} ${red}${bold}(Failed: $exit_code)${reset}\n"
+        if [ -s "$tmpfile" ]; then
+            term_width=$(tput cols)
+            printf "\n${red}🚨 ERROR MESSAGE 🚨\n"
+            printf "====================${reset}\n"
+            cat "$tmpfile"
+            printf "${red}$(printf "%${term_width}s" | tr ' ' '-')${reset}\n\n"
+        else
+            printf "\n${red}No error message captured.${reset}\n\n"
+        fi
+        rm -f "$tmpfile"
+        exit $exit_code
+    fi
+
+    rm -f "$tmpfile"
+    tput cnorm
+}
+
+spinner "$@"
