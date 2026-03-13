@@ -6,16 +6,14 @@ yellow=$(tput setaf 3)
 bold=$(tput bold)
 reset=$(tput sgr0)
 
-function line1()
-{
+function line1() {
     echo $(seq -s= 1 $(tput cols) | tr -d '[:digit:]')
 }
-function line2()
-{
+function line2() {
     echo $(seq -s━ 1 $(tput cols) | tr -d '[:digit:]')
 }
 function line3() {
-    echo ${green}$(seq -s '━╸' 1 $(( $(tput cols) / 2 )) | tr -d '[:digit:]')${reset}
+    echo ${green}$(seq -s '━╸' 1 $(($(tput cols) / 2)) | tr -d '[:digit:]')${reset}
 }
 
 function title1() {
@@ -25,7 +23,7 @@ function title1() {
     local i
 
     # Build underline
-    for ((i=0; i<len; i++)); do
+    for ((i = 0; i < len; i++)); do
         underline+="="
     done
 
@@ -33,21 +31,18 @@ function title1() {
     printf "\n%s\n%s\n\n" "${bold}${yellow}${str}${reset}" "${bold}${yellow}${underline}${reset}"
 }
 
-function run()
-{
+function run() {
     echo "${green}Running: >>> ${red}$@${green} <<< ${reset}"
     echo
     "$@"
     echo
 }
-function run0()
-{
+function run0() {
     echo "${green}Running: >>> ${red}$@${green} <<< ${reset}"
     "$@"
 }
 
-function nullrun()
-{
+function nullrun() {
     bash ~/.bash/spinner "$@"
 
     # $@ & spinner "$@"
@@ -57,7 +52,7 @@ function nullrun()
     # echo
 }
 function loop() {
-    local interval=${1:-1}  
+    local interval=${1:-1}
     if ! [[ $interval =~ ^[0-9]+$ ]]; then
         echo "Invalid interval. Setting default interval to 1 second."
         interval=0
@@ -76,9 +71,8 @@ function loop() {
 }
 
 # Find a file with a pattern in name:
-function ff ()
-{
-    find . -type f -iname '*'"$*"'*' -ls ;
+function ff() {
+    find . -type f -iname '*'"$*"'*' -ls
 }
 
 function mysql_import() {
@@ -96,14 +90,14 @@ function mysql_import() {
     run mysql -u $username -p$password -e "CREATE DATABASE IF NOT EXISTS $database CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
     # Import the database
-    run mysql -u $username -p$password $database < $file
+    run mysql -u $username -p$password $database <$file
 }
 
 function vpn() {
-	CONFIG=~/OFFICE_VPN/sslvpn-deep.panara-client-config.ovpn
-	PASS=~/OFFICE_VPN/pass.txt
+    CONFIG=~/OFFICE_VPN/sslvpn-deep.panara-client-config.ovpn
+    PASS=~/OFFICE_VPN/pass.txt
     # bash ~/.bash/spinner_with_log sudo -S openvpn --config "$CONFIG" --tun-mtu 1240 --auth-user-pass "$PASS"
-	bash ~/.bash/spinner_with_log sudo -S openvpn --config "$CONFIG" --auth-user-pass "$PASS"
+    bash ~/.bash/spinner_with_log sudo -S openvpn --config "$CONFIG" --auth-user-pass "$PASS"
 }
 
 function sqlmode() {
@@ -111,7 +105,7 @@ function sqlmode() {
     local HOST="localhost"
     local USER="helios"
     local PASSWORD="helios"
-    local DATABASE="${DATABASE:-}"  # optional, or set a default DB if needed
+    local DATABASE="${DATABASE:-}" # optional, or set a default DB if needed
 
     export MYSQL_PWD="$PASSWORD"
 
@@ -122,7 +116,6 @@ function sqlmode() {
     fi
 }
 
-
 # s2: Symfony deployment helper with targeted subcommands
 # Usage:
 #   s2 full              # run default full update
@@ -132,20 +125,20 @@ function sqlmode() {
 #   s2 help          # show help
 
 s2() {
-  # Configuration
-  SUDO_PASS="Denara#25"
-  
-  # One-time sudo warmup (non-interactive)
-  echo "$SUDO_PASS" | sudo -S bash -c 'echo 1 > /dev/null' 2>/dev/null
-  
-  # Ctrl-C handler: message, kill child jobs, exit with 130
-  trap 'echo "Aborted."; kill 0; exit 130' INT
+    # Configuration
+    SUDO_PASS="Denara#25"
 
-  # ============================================================================
-  # Help Documentation
-  # ============================================================================
-  s2_help() {
-    cat <<'EOF'
+    # One-time sudo warmup (non-interactive)
+    echo "$SUDO_PASS" | sudo -S bash -c 'echo 1 > /dev/null' 2>/dev/null
+
+    # Ctrl-C handler: message, kill child jobs, exit with 130
+    trap 'echo "Aborted."; kill 0; exit 130' INT
+
+    # ============================================================================
+    # Help Documentation
+    # ============================================================================
+    s2_help() {
+        cat <<'EOF'
 Usage: s2 [command]
 
 Commands:
@@ -157,104 +150,104 @@ Commands:
 
 No command: runs the default full update (SQL + cache + assets).
 EOF
-  }
+    }
 
-  # ============================================================================
-  # Validation
-  # ============================================================================
-  validate_symfony() {
-    if [[ ! -f "app/console" ]]; then
-      echo "Error: app/console not found. This script requires a Symfony project." 1>&2
-      trap - INT
-      return 1
-    fi
-  }
+    # ============================================================================
+    # Validation
+    # ============================================================================
+    validate_symfony() {
+        if [[ ! -f "app/console" ]]; then
+            echo "Error: app/console not found. This script requires a Symfony project." 1>&2
+            trap - INT
+            return 1
+        fi
+    }
 
-  # ============================================================================
-  # Task: Update SQL Schema
-  # ============================================================================
-  task_update_sql() {
-    validate_symfony || return 1
-    
-    DATABASE=$(yq e '.parameters.dynamic_database_name' /home/deep.panara@hs.local/projects/panteon/duell-pos/app/config/parameters.yml)
-    title1 "Updating DB: $DATABASE"
+    # ============================================================================
+    # Task: Update SQL Schema
+    # ============================================================================
+    task_update_sql() {
+        validate_symfony || return 1
 
-    bash ~/.bash/spinner_with_log "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
-    bash ~/.bash/spinner_with_log "bash ~/OneDrive/Importent\\ Data/scripts/run_sql_by_line.sh"
-  }
+        DATABASE=$(yq e '.parameters.dynamic_database_name' /home/deep.panara@hs.local/projects/panteon/duell-pos/app/config/parameters.yml)
+        title1 "Updating DB: $DATABASE"
 
-  # ============================================================================
-  # Task: Update JS/Assets
-  # ============================================================================
-  task_update_js() {
-    validate_symfony || return 1
-    
-    title1 "Updating JS/assets..."
-    bash ~/.bash/spinner_with_log "sudo rm -rf web/js/compiled/"
-    bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
-    bash ~/.bash/spinner_with_log "php app/console assets:install"
-    bash ~/.bash/spinner_with_log "php app/console assetic:dump"
-    bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
-  }
+        bash ~/.bash/spinner_with_log "php app/console doctrine:schema:update --dump-sql --em=client > sql.sql"
+        bash ~/.bash/spinner_with_log "bash ~/OneDrive/Importent\\ Data/scripts/run_sql_by_line.sh"
+    }
 
-  # ============================================================================
-  # Task: Update Cache
-  # ============================================================================
-  task_update_cache() {
-    validate_symfony || return 1
+    # ============================================================================
+    # Task: Update JS/Assets
+    # ============================================================================
+    task_update_js() {
+        validate_symfony || return 1
 
-    title1 "Updating cache..."
-    bash ~/.bash/spinner_with_log "php app/console c:c -v"
-  }
+        title1 "Updating JS/assets..."
+        bash ~/.bash/spinner_with_log "sudo rm -rf web/js/compiled/"
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
+        bash ~/.bash/spinner_with_log "php app/console assets:install"
+        bash ~/.bash/spinner_with_log "php app/console assetic:dump"
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
+    }
 
-  # ============================================================================
-  # Full Update Pipeline
-  # ============================================================================
-  full_update() {
-    validate_symfony || return 1
-    
-    # SQL migration
-    task_update_sql
-    
-    # Cache and assets refresh
-    title1 "Refreshing cache and assets..."
+    # ============================================================================
+    # Task: Update Cache
+    # ============================================================================
+    task_update_cache() {
+        validate_symfony || return 1
 
-    bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
-    bash ~/.bash/spinner_with_log "php app/console c:c -v"
-    bash ~/.bash/spinner_with_log "php app/console assets:install"
-    bash ~/.bash/spinner_with_log "php app/console assetic:dump"
-    bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
-  }
+        title1 "Updating cache..."
+        bash ~/.bash/spinner_with_log "php app/console c:c -v"
+    }
 
-  # ============================================================================
-  # Command Dispatcher
-  # ============================================================================
-  case "${1:-}" in
-    "full" )
-      full_update
-      ;;
-    help|-h )
-      s2_help
-      ;;
-    sql )
-      task_update_sql
-      ;;
-    js )
-      task_update_js
-      ;;
-    cc )
-      task_update_cache
-      ;;
-    * )
-      echo "Error: unknown command '$1'." 1>&2
-      s2_help
-      trap - INT
-      return 2
-      ;;
-  esac
+    # ============================================================================
+    # Full Update Pipeline
+    # ============================================================================
+    full_update() {
+        validate_symfony || return 1
 
-  # Clean up trap when done
-  trap - INT
+        # SQL migration
+        task_update_sql
+
+        # Cache and assets refresh
+        title1 "Refreshing cache and assets..."
+
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
+        bash ~/.bash/spinner_with_log "php app/console c:c -v"
+        bash ~/.bash/spinner_with_log "php app/console assets:install"
+        bash ~/.bash/spinner_with_log "php app/console assetic:dump"
+        bash ~/.bash/spinner_with_log "sudo chmod -R 777 app/cache/ app/logs/ web/uploads/"
+    }
+
+    # ============================================================================
+    # Command Dispatcher
+    # ============================================================================
+    case "${1:-}" in
+    "full")
+        full_update
+        ;;
+    help | -h)
+        s2_help
+        ;;
+    sql)
+        task_update_sql
+        ;;
+    js)
+        task_update_js
+        ;;
+    cc)
+        task_update_cache
+        ;;
+    *)
+        echo "Error: unknown command '$1'." 1>&2
+        s2_help
+        trap - INT
+        return 2
+        ;;
+    esac
+
+    # Clean up trap when done
+    trap - INT
 }
 
 # s7: Symfony 7 deployment helper with targeted subcommands
@@ -268,20 +261,20 @@ EOF
 #   s7 help          # show help
 
 s7() {
-  # Configuration
-  SUDO_PASS="Denara#25"
-  
-  # One-time sudo warmup (non-interactive)
-  echo "$SUDO_PASS" | sudo -S bash -c 'echo 1 > /dev/null' 2>/dev/null
-  
-  # Ctrl-C handler: message, kill child jobs, exit with 130
-  trap 'echo "Aborted."; kill 0; exit 130' INT
+    # Configuration
+    SUDO_PASS="Denara#25"
 
-  # ============================================================================
-  # Help Documentation
-  # ============================================================================
-  s7_help() {
-    cat <<'EOF'
+    # One-time sudo warmup (non-interactive)
+    echo "$SUDO_PASS" | sudo -S bash -c 'echo 1 > /dev/null' 2>/dev/null
+
+    # Ctrl-C handler: message, kill child jobs, exit with 130
+    trap 'echo "Aborted."; kill 0; exit 130' INT
+
+    # ============================================================================
+    # Help Documentation
+    # ============================================================================
+    s7_help() {
+        cat <<'EOF'
 Usage: s7 [command]
 
 Commands:
@@ -295,151 +288,150 @@ Commands:
 
 No command: runs the default full update (SQL + cache + assets).
 EOF
-  }
+    }
 
-  validate_symfony() {
-    if [[ ! -f "bin/console" ]]; then
-      echo "Error: bin/console not found. This script requires a Symfony7 project." 1>&2
-      trap - INT
-      return 1
-    fi
-  }
+    validate_symfony() {
+        if [[ ! -f "bin/console" ]]; then
+            echo "Error: bin/console not found. This script requires a Symfony7 project." 1>&2
+            trap - INT
+            return 1
+        fi
+    }
 
-  task_update_sql() {
-    validate_symfony || return 1
-    
-    title1 "Updating SQL..."
-    bash ~/.bash/spinner_with_log "symfony console doctrine:schema:update --em=client --dump-sql > sql.sql"
-    bash ~/.bash/spinner_with_log "bash ~/OneDrive/Importent\\ Data/scripts/run_sql_by_line7.sh"
-  }
+    task_update_sql() {
+        validate_symfony || return 1
 
-  task_update_js() {
-    validate_symfony || return 1
-    
-    title1 "Updating JS/assets..."
-    bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm install"
-    bash ~/.bash/spinner_with_log "symfony console assets:install"
-    bash ~/.bash/spinner_with_log "symfony console fos:js-routing:dump --format=json --target=public/js/routes.json"
-    bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm dev"
-  }
+        title1 "Updating SQL..."
+        bash ~/.bash/spinner_with_log "symfony console doctrine:schema:update --em=client --dump-sql > sql.sql"
+        bash ~/.bash/spinner_with_log "bash ~/OneDrive/Importent\\ Data/scripts/run_sql_by_line7.sh"
+    }
 
-  task_watch_js() {
-    validate_symfony || return 1
-    
-    title1 "Updating JS/assets..."
-    bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm install"
-    bash ~/.bash/spinner_with_log "symfony console assets:install"
-    bash ~/.bash/spinner_with_log "symfony console fos:js-routing:dump --format=json --target=public/js/routes.json"
-    bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm watch"
-  }
+    task_update_js() {
+        validate_symfony || return 1
 
-  task_update_cache() {
+        title1 "Updating JS/assets..."
+        bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm install"
+        bash ~/.bash/spinner_with_log "symfony console assets:install"
+        bash ~/.bash/spinner_with_log "symfony console fos:js-routing:dump --format=json --target=public/js/routes.json"
+        bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm dev"
+    }
 
-    title1 "Refreshing cache..."
-    bash ~/.bash/spinner_with_log "symfony console c:c -v"
-    bash ~/.bash/spinner_with_log "sudo chmod 777 -R var/"
-    
-  }
+    task_watch_js() {
+        validate_symfony || return 1
 
- task_update_composer() {
-    validate_symfony || return 1
+        title1 "Updating JS/assets..."
+        bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm install"
+        bash ~/.bash/spinner_with_log "symfony console assets:install"
+        bash ~/.bash/spinner_with_log "symfony console fos:js-routing:dump --format=json --target=public/js/routes.json"
+        bash ~/.bash/spinner_with_log "source ~/.nvm/nvm.sh && nvm use 22 && pnpm watch"
+    }
 
-    title1 "Refreshing Composer..."
+    task_update_cache() {
 
-    BACKUP="composer_backup_$(date +%Y%m%d_%H%M%S).zip"
+        title1 "Refreshing cache..."
+        bash ~/.bash/spinner_with_log "symfony console c:c -v"
+        bash ~/.bash/spinner_with_log "sudo chmod 777 -R var/"
 
-    bash ~/.bash/spinner_with_log zip -r "$BACKUP" vendor composer.json composer.lock 2>/dev/null
+    }
 
-    bash ~/.bash/spinner_with_log "rm -rf vendor composer.lock"
+    task_update_composer() {
+        validate_symfony || return 1
 
-    bash ~/.bash/spinner_with_log "composer install --no-interaction --prefer-dist"
-    title1 "Refreshing cache..."
-    bash ~/.bash/spinner_with_log "symfony console c:c -v"
-    bash ~/.bash/spinner_with_log "symfony console fos:js-routing:dump --format=json --target=public/js/routes.json"
-    bash ~/.bash/spinner_with_log "sudo chmod 777 -R var/"
-    task_update_js
-}
+        title1 "Refreshing Composer..."
 
+        BACKUP="composer_backup_$(date +%Y%m%d_%H%M%S).zip"
 
-  # ============================================================================
-  # Task: Symfony Dump Server
-  # ============================================================================
-  task_dump_server() {
-    local BASE_DIR="$HOME/projects/panteon/duell-admin/backoffice"
-    local FILE="dump.html"
-    local FULL_PATH="$BASE_DIR/$FILE"
-    
-    echo "========== SERVICE DUMP =========="
-    echo "Dir       : $BASE_DIR"
-    echo "File      : $FULL_PATH"
-    echo "Started   : $(date)"
-    echo "================================="
-    
-    cd "$BASE_DIR" || return 1
-    
-    # Remove old file and create empty file
-    rm -f "$FILE"
-    : > "$FILE"
-    
-    # Open browser immediately
-    echo "Opening browser:"
-    echo "file://$FULL_PATH"
-    google-chrome "file://$FULL_PATH" >/dev/null 2>&1 &
-    sleep 1
-    
-    # Start symfony dump server (writes into same file)
-    symfony console server:dump --format=html > "$FILE"
-  }
+        bash ~/.bash/spinner_with_log zip -r "$BACKUP" vendor composer.json composer.lock 2>/dev/null
 
-  # ============================================================================
-  # Full Update Pipeline
-  # ============================================================================
-  full_update() {
-    validate_symfony || return 1
-    
-    task_update_sql
-    task_update_cache
-    task_update_js
-  }
+        bash ~/.bash/spinner_with_log "rm -rf vendor composer.lock"
 
-  # ============================================================================
-  # Command Dispatcher
-  # ============================================================================
-  case "${1:-}" in
-    "full" )
-      full_update
-      ;;
-    sql )
-      task_update_sql
-      ;;
-    js )
-      task_update_js
-      ;;
-    cc )
-      task_update_cache
-      ;;
-    watch )
-      task_watch_js
-      ;;
-    dump )
-      task_dump_server
-      ;;
-    composer )
-      task_update_composer
-      ;;
-    help|-h )
-      s7_help
-      ;;
-    * )
-      echo "Error: unknown command '$1'." 1>&2
-      s7_help
-      trap - INT
-      return 2
-      ;;
-  esac
+        bash ~/.bash/spinner_with_log "composer install --no-interaction --prefer-dist"
+        title1 "Refreshing cache..."
+        bash ~/.bash/spinner_with_log "symfony console c:c -v"
+        bash ~/.bash/spinner_with_log "symfony console fos:js-routing:dump --format=json --target=public/js/routes.json"
+        bash ~/.bash/spinner_with_log "sudo chmod 777 -R var/"
+        task_update_js
+    }
 
-  # Clean up trap when done
-  trap - INT
+    # ============================================================================
+    # Task: Symfony Dump Server
+    # ============================================================================
+    task_dump_server() {
+        local BASE_DIR="$HOME/projects/panteon/duell-admin/backoffice"
+        local FILE="dump.html"
+        local FULL_PATH="$BASE_DIR/$FILE"
+
+        echo "========== SERVICE DUMP =========="
+        echo "Dir       : $BASE_DIR"
+        echo "File      : $FULL_PATH"
+        echo "Started   : $(date)"
+        echo "================================="
+
+        cd "$BASE_DIR" || return 1
+
+        # Remove old file and create empty file
+        rm -f "$FILE"
+        : >"$FILE"
+
+        # Open browser immediately
+        echo "Opening browser:"
+        echo "file://$FULL_PATH"
+        google-chrome "file://$FULL_PATH" >/dev/null 2>&1 &
+        sleep 1
+
+        # Start symfony dump server (writes into same file)
+        symfony console server:dump --format=html >"$FILE"
+    }
+
+    # ============================================================================
+    # Full Update Pipeline
+    # ============================================================================
+    full_update() {
+        validate_symfony || return 1
+
+        task_update_sql
+        task_update_cache
+        task_update_js
+    }
+
+    # ============================================================================
+    # Command Dispatcher
+    # ============================================================================
+    case "${1:-}" in
+    "full")
+        full_update
+        ;;
+    sql)
+        task_update_sql
+        ;;
+    js)
+        task_update_js
+        ;;
+    cc)
+        task_update_cache
+        ;;
+    watch)
+        task_watch_js
+        ;;
+    dump)
+        task_dump_server
+        ;;
+    composer)
+        task_update_composer
+        ;;
+    help | -h)
+        s7_help
+        ;;
+    *)
+        echo "Error: unknown command '$1'." 1>&2
+        s7_help
+        trap - INT
+        return 2
+        ;;
+    esac
+
+    # Clean up trap when done
+    trap - INT
 }
 
 function localq() {
@@ -464,10 +456,10 @@ function processXXX() {
 
     $cmd 2>&1 | while IFS= read -r line; do
         last_lines+=("$line")
-        (( ${#last_lines[@]} > 5 )) && last_lines=("${last_lines[@]:1}")
+        ((${#last_lines[@]} > 5)) && last_lines=("${last_lines[@]:1}")
 
         tput cuu 5
-        for ((i=0; i<5; i++)); do
+        for ((i = 0; i < 5; i++)); do
             if [[ $i -lt ${#last_lines[@]} ]]; then
                 printf "\r\033[K%s\n" "${last_lines[$i]}"
             else
@@ -478,13 +470,13 @@ function processXXX() {
 
     # --- cleanup after command completes ---
     tput cuu 5
-    for ((i=0; i<5; i++)); do
+    for ((i = 0; i < 5; i++)); do
         printf "\r\033[K\n"
     done
 }
 
 qcount() {
-  bash -c "$(declare -f qcount_bash); qcount_bash"
+    bash -c "$(declare -f qcount_bash); qcount_bash"
 }
 
 function qcount_bash() {
@@ -536,7 +528,7 @@ function qcount_bash() {
 
         while IFS=":" read -r key val; do
             counts["$key"]="$val"
-        done <<< "$results"
+        done <<<"$results"
 
         for q in "${queues[@]}"; do
             line+=$(printf "| %-25s " "${counts[$q]}")
@@ -546,24 +538,23 @@ function qcount_bash() {
         sep="+----------------------+---------------------------+---------------------------+---------------------------+---------------------------+---------------------------+"
 
         last_rows+=("$line" "$sep")
-        (( ${#last_rows[@]} > 10 )) && last_rows=("${last_rows[@]:2}")
+        ((${#last_rows[@]} > 10)) && last_rows=("${last_rows[@]:2}")
 
         # move cursor up 12 lines (back into reserved area)
         tput cuu 10
 
         # redraw 12 lines (pad if fewer)
-        for ((i=0; i<10; i++)); do
+        for ((i = 0; i < 10; i++)); do
             if [[ $i -lt ${#last_rows[@]} ]]; then
                 printf "%s\n" "${last_rows[$i]}"
             else
-                printf "%*s\n" 149 " "  # blank line, table width
+                printf "%*s\n" 149 " " # blank line, table width
             fi
         done
 
         sleep 1
     done
 }
-
 
 function ext {
     if [ -z "$1" ]; then
@@ -572,35 +563,35 @@ function ext {
         echo "       extract <path/file_name_1.ext> [path/file_name_2.ext] [path/file_name_3.ext]"
         return 1
     else
-        for n in $@
-            do
-                if [ -f "$n" ] ; then
-                  case "${n%,}" in
-                    *.tar.bz2|*.tar.gz|*.tar.xz|*.tbz2|*.tgz|*.txz|*.tar)
-                                 run tar xvf "$n"       ;;
-                    *.lzma)      run unlzma ./"$n"      ;;
-                    *.bz2)       run bunzip2 ./"$n"     ;;
-                    *.rar)       run unrar x -ad ./"$n" ;;
-                    *.gz)        run gunzip ./"$n"      ;;
-                    *.zip)       run unzip ./"$n"       ;;
-                    *.z)         run uncompress ./"$n"  ;;
-                    *.7z|*.arj|*.cab|*.chm|*.deb|*.dmg|*.iso|*.lzh|*.msi|*.rpm|*.udf|*.wim|*.xar)
-                                 run 7z x ./"$n"        ;;
-                    *.xz)        run unxz ./"$n"        ;;
-                    *.exe)       run cabextract ./"$n"  ;;
-                    *)
-                                 echo "extract: '$n' - unknown archive method"
-                                 return 1
-                                 ;;
-                  esac
-                else
-                  echo "'$n' - file does not exist"
-                  return 1
-                fi
-            done
+        for n in $@; do
+            if [ -f "$n" ]; then
+                case "${n%,}" in
+                *.tar.bz2 | *.tar.gz | *.tar.xz | *.tbz2 | *.tgz | *.txz | *.tar)
+                    run tar xvf "$n"
+                    ;;
+                *.lzma) run unlzma ./"$n" ;;
+                *.bz2) run bunzip2 ./"$n" ;;
+                *.rar) run unrar x -ad ./"$n" ;;
+                *.gz) run gunzip ./"$n" ;;
+                *.zip) run unzip ./"$n" ;;
+                *.z) run uncompress ./"$n" ;;
+                *.7z | *.arj | *.cab | *.chm | *.deb | *.dmg | *.iso | *.lzh | *.msi | *.rpm | *.udf | *.wim | *.xar)
+                    run 7z x ./"$n"
+                    ;;
+                *.xz) run unxz ./"$n" ;;
+                *.exe) run cabextract ./"$n" ;;
+                *)
+                    echo "extract: '$n' - unknown archive method"
+                    return 1
+                    ;;
+                esac
+            else
+                echo "'$n' - file does not exist"
+                return 1
+            fi
+        done
     fi
 }
-
 
 if [ -n "$BASH_VERSION" ]; then
     export -f line1 line2 line3 title1 run run0 nullrun loop
