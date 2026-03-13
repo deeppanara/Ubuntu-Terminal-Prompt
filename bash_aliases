@@ -16,10 +16,11 @@ alias cd..='cd ..'
 alias c='clear'
 alias apt-get='sudo apt-get'
 alias lh='ls --human-readable --size -1 -S --classify'
-alias ip="curl http://ipecho.net/plain; echo"
+alias ip="curl v4.i-p.show; echo"
 alias log='git log --pretty=format:"%C(yellow)%H%Creset | %ad | %Cgreen%s%Creset %Cred%d%Creset %Cblue[%an]" --date=format:"%Y-%m-%d %H:%M:%S" -n5'
 alias lg='lazygit'
 alias ld='lazydocker'
 alias down='service_down'
 alias mp3='youtube-dl -x --audio-format mp3 '
 alias connect='bash ~/OneDrive/Importent\ Data/scripts/connect.bash'
+alias dep='php -d xdebug.mode=off deployer.phar'

@@ -55,8 +55,8 @@ function spinner() {
     errfile=$(mktemp)
     term_width=$(tput cols)
 
-    for i in {1..11}; do echo; done
-    tput cuu 11
+    for i in {1..21}; do echo; done
+    tput cuu 21
     tput sc
 
     eval "$@" > "$outfile" 2> "$errfile" &
@@ -84,11 +84,11 @@ function spinner() {
         fi
 
         # Collect last 10 wrapped lines
-        mapfile -t last_lines < <(tail -n 10 "$outfile" | fold -w $((term_width-5)) -s)
+        mapfile -t last_lines < <(tail -n 20 "$outfile" | fold -w $((term_width-5)) -s)
 
-        # Number of lines to print (min of 10 or array length)
+        # Number of lines to print (min of 20 or array length)
         count=${#last_lines[@]}
-        (( count > 10 )) && count=10
+        (( count > 20 )) && count=20
 
         # Print only what's available
         # Print lines, use └ for the last one
